@@ -1,5 +1,8 @@
 module VDJDL
+    include("Tokenizer.jl")
+    include("Embeddings.jl")
+    using .Tokenizer
+    using .Embeddings
 
-# Write your package code here.
+end # module VDJDL
 
-end
