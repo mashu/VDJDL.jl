@@ -59,6 +59,9 @@ end
     indices_matrix = [1 2; 3 1]
     decoded_matrix = encoder(indices_matrix)
     @test decoded_matrix == [["A", "C"], ["B", "A"]]
+
+    # Test Flux.trainable method
+    @test length(Flux.trainable(encoder)) == 0
 end
 
 # Test SequenceTokenizer functionality
@@ -96,12 +99,20 @@ end
     indices_matrix = [1 2; 3 4]
     decoded_matrix = tokenizer(indices_matrix)
     @test decoded_matrix == [['N', 'C'], ['A', 'G']]
+
+    # Test case to trigger findfirst(isequal(unksym), alphabet)
+    alphabet_with_unksym = ['N', 'A', 'C', 'G', 'T']
+    tokenizer_with_existing_unksym = SequenceTokenizer(alphabet_with_unksym, 'N')
+    @test tokenizer_with_existing_unksym.unkidx == 1  # 'N' should be found at index 1
+    
+    # Test Flux.trainable method
+    @test length(Flux.trainable(tokenizer)) == 0
 end
 
 # Test the PositionEncoding struct and methods
 @testset "PositionEncoding" begin
     # Test make_position_encoding function
-    @testset "make_position_encoding" begin
+    @testset "Make position encoding" begin
         dim_embedding = 4
         seq_length = 10
         encoding = make_position_encoding(dim_embedding, seq_length)
@@ -116,12 +127,17 @@ end
             end
         end
 
+        expected_encoding = Matrix{Float32}([
+            0.841471 0.909297;
+            0.540302 -0.416147
+        ])
+
         # Explicitly test the return value
-        @test encoding == make_position_encoding(dim_embedding, seq_length)
+        @test isapprox(make_position_encoding(2, 2), expected_encoding, atol=1e-6)
     end
 
     # Test PositionEncoding constructor
-    @testset "constructor" begin
+    @testset "Constructor" begin
         dim_embedding = 4
         max_length = 20
         pe = PositionEncoding(dim_embedding, max_length)
@@ -130,7 +146,7 @@ end
     end
 
     # Test application of PositionEncoding to arrays
-    @testset "apply to array" begin
+    @testset "Apply to array" begin
         dim_embedding = 4
         max_length = 20
         pe = PositionEncoding(dim_embedding, max_length)
@@ -143,7 +159,7 @@ end
     end
 
     # Test handling of sequence lengths
-    @testset "sequence length handling" begin
+    @testset "Sequence length handling" begin
         dim_embedding = 4
         max_length = 20
         pe = PositionEncoding(dim_embedding, max_length)
