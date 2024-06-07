@@ -1,5 +1,6 @@
 # VDJDL
 
+[![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://mashu.github.io/VDJDL.jl/dev/)
 [![Build Status](https://github.com/mashu/VDJDL.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/mashu/VDJDL.jl/actions/workflows/CI.yml?query=branch%3Amain)
 [![Codecov](https://codecov.io/github/mashu/VDJDL.jl/graph/badge.svg?token=ZSX40TP0HZ)](https://codecov.io/github/mashu/VDJDL.jl)
 
