@@ -28,14 +28,8 @@ module Tokenizer
     function (encoder::LabelEncoder)(label::String)
         haskey(encoder.lookup, label) ? encoder.lookup[label] : error("Label not found: $label")
     end
-    function (encoder::LabelEncoder)(labels::Vector{String})
-        map(l -> encoder(l), labels)
-    end
     function (encoder::LabelEncoder)(idx::Int)
         encoder.labels[idx]
-    end
-    function (encoder::LabelEncoder)(idxs::Vector{Int})
-        map(i -> encoder(i), idxs)
     end
     function (encoder::LabelEncoder)(batch::AbstractVector{String})
         map(l -> encoder(l), batch)
@@ -74,13 +68,13 @@ module Tokenizer
     function (tokenizer::SequenceTokenizer{T})(token::T) where T
         haskey(tokenizer.lookup, token) ? tokenizer.lookup[token] : tokenizer.unkidx
     end
-    function (tokenizer::SequenceTokenizer{T})(tokens::Vector{T}) where T
+    function (tokenizer::SequenceTokenizer{T})(tokens::AbstractVector{T}) where T
         map(t -> tokenizer(t), tokens)
     end
     function (tokenizer::SequenceTokenizer)(idx::Int)
         tokenizer.alphabet[idx]
     end
-    function (tokenizer::SequenceTokenizer)(idxs::Vector{Int})
+    function (tokenizer::SequenceTokenizer)(idxs::AbstractVector{Int})
         map(i -> tokenizer(i), idxs)
     end
     function (tokenizr::SequenceTokenizer)(batch::AbstractVector{Vector{T}}) where T
