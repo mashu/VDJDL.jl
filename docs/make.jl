@@ -15,7 +15,7 @@ makedocs(;
     pages=[
         "Home" => "index.md",
     ],
-    strict = false  # Disable strict mode to avoid errors on missing docs
+    warnonly=true,
 )
 
 deploydocs(;
