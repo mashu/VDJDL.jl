@@ -24,9 +24,15 @@ module Tokenizer
     end
 
     """
-        struct LabelEncoder
+        LabelEncoder(labels::Vector{String})
 
-    Encodes and decodes labels for machine learning tasks.
+    Encodes and decodes labels.
+
+    # Arguments
+    - `labels::Vector{String}`: A vector of labels to be encoded.
+
+    # Returns
+    - `LabelEncoder`: A `LabelEncoder` object.
     """
     struct LabelEncoder
         labels::Vector{String}
@@ -68,10 +74,17 @@ module Tokenizer
     Flux.trainable(encoder::LabelEncoder) = (;)
 
     """
-        struct SequenceTokenizer{T}
+        SequenceTokenizer(alphabet::Vector{T}, unksym::T) where T
 
-    Tokenizes sequences for NLP tasks.
-    """
+    Tokenizes character sequences.
+
+    # Arguments
+    - `alphabet::Vector{T}`: A vector of symbols to be tokenized.
+    - `unksym::T`: The symbol for unknown tokens.
+
+    # Returns
+    - `SequenceTokenizer{T}`: A `SequenceTokenizer` object.
+    """ 
     struct SequenceTokenizer{T}
         alphabet::Vector{T}
         lookup::Dict{T, Int32}
