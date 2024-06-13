@@ -58,7 +58,7 @@ module Embeddings
                 encoding[row + 2, pos] = cos(pos * denom)
             end
         end
-        encoding    
+        return encoding
     end
 
     """

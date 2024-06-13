@@ -136,7 +136,7 @@ module Tokenizer
                 @inbounds indices[i, j] = tokenizer(seq[i])
             end
         end
-        indices
+        return indices
     end
 
     function (tokenizer::SequenceTokenizer)(batch::AbstractVector{Vector{Int}})
