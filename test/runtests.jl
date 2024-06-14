@@ -1,7 +1,9 @@
 using Test
 using VDJDL.Tokenizer: LabelEncoder, SequenceTokenizer, read_fasta
 using VDJDL.Embeddings: PositionEncoding, make_position_encoding
+using VDJDL.Layers: Rezero
 using Flux
+using FiniteDifferences
 
 # Helper function to create a temporary FASTA file
 function create_temp_fasta(content::String)
@@ -109,92 +111,109 @@ end
     @test length(Flux.trainable(tokenizer)) == 0
 end
 
-# Test the PositionEncoding struct and methods
+# Main testset for PositionEncoding
 @testset "PositionEncoding" begin
     # Test make_position_encoding function
-    @testset "Make position encoding" begin
-        dim_embedding = 4
-        seq_length = 10
-        encoding = make_position_encoding(dim_embedding, seq_length)
-        
-        @test size(encoding) == (dim_embedding, seq_length)
-        
-        for pos in 1:seq_length
-            for row in 0:2:(dim_embedding - 1)
-                denom = 1 / (10000^(row / dim_embedding))
-                @test encoding[row + 1, pos] ≈ sin(pos * denom)
-                @test encoding[row + 2, pos] ≈ cos(pos * denom)
-            end
+    dim_embedding = 4
+    seq_length = 10
+    encoding = make_position_encoding(dim_embedding, seq_length)
+    
+    @test size(encoding) == (dim_embedding, seq_length)
+    
+    for pos in 1:seq_length
+        for row in 0:2:(dim_embedding - 1)
+            denom = 1 / (10000^(row / dim_embedding))
+            @test encoding[row + 1, pos] ≈ sin(pos * denom)
+            @test encoding[row + 2, pos] ≈ cos(pos * denom)
         end
-
-        expected_encoding = Matrix{Float32}([
-            0.841471 0.909297;
-            0.540302 -0.416147
-        ])
-
-        # Explicitly test the return value
-        @test isapprox(make_position_encoding(2, 2), expected_encoding, atol=1e-6)
     end
+
+    expected_encoding = Matrix{Float32}([
+        0.841471 0.909297;
+        0.540302 -0.416147
+    ])
+
+    @test isapprox(make_position_encoding(2, 2), expected_encoding, atol=1e-6)
 
     # Test PositionEncoding constructor
-    @testset "Constructor" begin
-        dim_embedding = 4
-        max_length = 20
-        pe = PositionEncoding(dim_embedding, max_length)
-        
-        @test size(pe.weight) == (dim_embedding, max_length)
-    end
+    max_length = 20
+    pe = PositionEncoding(dim_embedding, max_length)
+    @test size(pe.weight) == (dim_embedding, max_length)
 
     # Test application of PositionEncoding to arrays
-    @testset "Apply to array" begin
-        dim_embedding = 4
-        max_length = 20
-        pe = PositionEncoding(dim_embedding, max_length)
-        
-        # Create a dummy input array
-        x = rand(Float32, dim_embedding, 10)
-        encoding = pe(x)
-        
-        @test size(encoding) == (dim_embedding, 10)
-    end
+    x = rand(Float32, dim_embedding, 10)
+    encoding = pe(x)
+    @test size(encoding) == (dim_embedding, 10)
 
     # Test handling of sequence lengths
-    @testset "Sequence length handling" begin
-        dim_embedding = 4
-        max_length = 20
-        pe = PositionEncoding(dim_embedding, max_length)
-        
-        # Valid sequence length
-        seq_length = 10
-        encoding = pe(seq_length)
-        @test size(encoding) == (dim_embedding, seq_length)
-        
-        # Invalid sequence length (greater than max_length)
-        seq_length = 25
-        @test_throws ErrorException pe(seq_length)
-    end
+    seq_length = 10
+    encoding = pe(seq_length)
+    @test size(encoding) == (dim_embedding, seq_length)
+    
+    seq_length = 25
+    @test_throws ErrorException pe(seq_length)
 
     # Test Base.show method
-    @testset "Base.show method" begin
-        dim_embedding = 4
-        max_length = 20
-        pe = PositionEncoding(dim_embedding, max_length)
-        
-        io = IOBuffer()
-        Base.show(io, pe)
-        output = String(take!(io))
-        
-        @test output == "PositionEncoding($(dim_embedding))"
-    end
+    io = IOBuffer()
+    Base.show(io, pe)
+    output = String(take!(io))
+    @test output == "PositionEncoding($(dim_embedding))"
 
     # Test Flux.trainable method
-    @testset "Flux.trainable method" begin
-        dim_embedding = 4
-        max_length = 20
-        pe = PositionEncoding(dim_embedding, max_length)
-        
-        trainables = Flux.trainable(pe)
-        
-        @test length(trainables) == 0
-    end
+    trainables = Flux.trainable(pe)
+    @test length(trainables) == 0
 end
+
+# Test ReZero
+@testset "Rezero" begin
+    # Create a Rezero layer with a custom alpha parameter
+    alpha = [0.5]
+    rezero = Rezero(alpha)
+    
+    @test rezero.alpha == alpha
+    
+    # Create a Rezero layer with default alpha parameter
+    rezero = Rezero()
+    
+    @test rezero.alpha == [0f0]
+    
+    # Apply the Rezero layer to an input array
+    x = rand(Float32, 4, 4)
+    y = rezero(x)
+    
+    @test y == zeros(Float32, 4, 4)
+    
+    # Test Base.show method
+    io = IOBuffer()
+    Base.show(io, rezero)
+    output = String(take!(io))
+    
+    @test output == "Rezero(alpha = Float32[0.0])"
+    
+    # Test Flux.trainable method
+    trainables = Flux.trainable(rezero)
+    
+    @test length(trainables) == 1
+
+    # Test gradients
+    x = rand(Float32, 5)
+    alpha = rand(Float32, 5)
+    layer = Rezero(alpha)
+    
+    model = Chain(layer)
+    loss(x) = sum(model(x))
+    
+    grads = Flux.gradient(() -> loss(x), Flux.params(model))[layer.alpha]
+    
+    function fd_loss(alpha)
+        layer.alpha .= alpha  # Update layer's alpha with the new alpha
+        return sum(layer(x))
+    end
+    
+    fdm = FiniteDifferences.central_fdm(5, 1)
+    fd_grads = FiniteDifferences.grad(fdm, fd_loss, layer.alpha)[1]
+
+    # Test if gradients are approximately equal
+    @test isapprox(grads, fd_grads, atol=1e-5)
+end
+
