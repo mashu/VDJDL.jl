@@ -10,9 +10,13 @@ VDJDL is a Julia package specifically designed for deep learning tasks involving
 
 ## Features
 
-- **Label Encoding**: Convert categorical labels to numerical format.
-- **Sequence Tokenization**: Tokenize DNA sequences for model input.
-- **Position Embeddings**: Generate position encodings for sequence data.
+### Data representation
+- **Label Encoding**: Converts categorical labels into numerical format.
+- **Sequence Tokenization**: Tokenizes DNA sequences, preparing them for input into models.
+
+### Layers
+- **Position Encoding**: Implements absolute positional sine-cosine embeddings, providing positional information to sequences ([Attetnion Is All You Need](https://doi.org/10.48550/arXiv.1706.03762))
+- **Rezero**: A normalization layer featuring a single learnable scaling parameter ([ReZero is All You Need: Fast Convergence at Large Depth](https://doi.org/10.48550/arXiv.2003.04887))
 
 ## Installation
 

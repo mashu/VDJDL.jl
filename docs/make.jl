@@ -15,7 +15,8 @@ makedocs(;
     pages=[
         "Home" => "index.md",
         "Tokenizer" => "tokenizer.md",
-        "Embeddings" => "embeddings.md"
+        "Embeddings" => "embeddings.md",
+        "Layers" => "layers.md",
     ],
     warnonly=true,
 )
