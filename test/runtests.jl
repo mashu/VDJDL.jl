@@ -1,7 +1,7 @@
 using Test
 using VDJDL.Tokenizer: LabelEncoder, SequenceTokenizer, read_fasta
 using VDJDL.Embeddings: PositionEncoding, make_position_encoding
-using VDJDL.Layers: Rezero
+using VDJDL.Layers: Rezero, RotaryMultiHeadAttention
 using Flux
 using FiniteDifferences
 
@@ -217,3 +217,42 @@ end
     @test isapprox(grads, fd_grads, atol=1e-5)
 end
 
+@testset "RotaryMultiHeadAttention" begin
+    # Test for RotaryMultiHeadAttention struct creation
+    hidden_size = 256
+    head_size = 64
+    nheads = 8
+    bias = true
+    dropout_prob = 0.1
+
+    rma = RotaryMultiHeadAttention(hidden_size, head_size, nheads; bias=bias, dropout_prob=dropout_prob)
+
+    @test rma.hidden_size == hidden_size
+    @test rma.head_size == head_size
+    @test rma.nheads == nheads
+    @test rma.bias == bias
+    @test rma.dropout_prob == dropout_prob
+
+    # Test for the custom string representation
+    io = IOBuffer()
+    rma = RotaryMultiHeadAttention(256, 64, 8)
+    show(io, rma)
+    output = String(take!(io))
+
+    expected_output = "RotaryMultiHeadAttention(nheads=8, hidden_size=256, head_size=64, bias=false, dropout_prob=0.0)"
+    @test output == expected_output
+    # Test for the rotary multi-head attention mechanism
+    hidden_size = 256
+    head_size = 64
+    nheads = 8
+    rma = RotaryMultiHeadAttention(hidden_size, head_size, nheads)
+
+    q_in = rand(Float32, hidden_size, 10, 32)  # Query input
+    k_in = rand(Float32, hidden_size, 10, 32)  # Key input
+    v_in = rand(Float32, hidden_size, 10, 32)  # Value input
+
+    x, α = rma(q_in, k_in, v_in)
+
+    @test size(x) == (hidden_size, 10, 32)
+    @test size(α) == (10, 10, 1, 32)
+end
