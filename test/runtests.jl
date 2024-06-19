@@ -2,8 +2,11 @@ using Test
 using VDJDL.Tokenizer: LabelEncoder, SequenceTokenizer, read_fasta
 using VDJDL.Embeddings: PositionEncoding, make_position_encoding
 using VDJDL.Layers: Rezero, RotaryMultiHeadAttention
+using VDJDL.VDJDistributions: ShiftedPoisson, ZISNB, MixtureZISNB, JointTrimming, loglikelihood, eps
 using Flux
 using FiniteDifferences
+using Distributions
+using Random
 
 # Helper function to create a temporary FASTA file
 function create_temp_fasta(content::String)
@@ -255,4 +258,82 @@ end
 
     @test size(x) == (hidden_size, 10, 32)
     @test size(α) == (10, 10, 1, 32)
+end
+
+# Test for ShiftedPoisson
+@testset "ShiftedPoisson Tests" begin
+    λ = 3.0
+    shift = 2
+    sp = ShiftedPoisson(λ, shift)
+
+    @test isapprox(pdf(sp, 5), pdf(Poisson(λ), 5 - shift))
+    @test isapprox(logpdf(sp, 5), logpdf(Poisson(λ), 5 - shift))
+
+    Random.seed!(1234)
+    rand_val = rand(sp)
+    @test rand_val >= shift
+end
+
+# Test for ZISNB
+@testset "ZISNB Tests" begin
+    π = 0.3
+    r = 2.0
+    p = 0.5
+    zisnb = ZISNB(π, r, p)
+
+    Random.seed!(1234)
+    rand_val = rand(zisnb)
+    @test rand_val >= 0
+
+    logpdf_val_zero = logpdf(zisnb, 0)
+    logpdf_val_nonzero = logpdf(zisnb, 2)
+    @test isapprox(logpdf_val_zero, log(π))
+    @test isapprox(logpdf_val_nonzero, log1p(-π) + logpdf(NegativeBinomial(r, p), 2 - 1))
+end
+
+# Test for MixtureZISNB
+@testset "MixtureZISNB Tests" begin
+    π = 0.3
+    r = 2.0
+    p = 0.5
+    negative_min = -5
+    negative_max = -1
+    mixture_prob = 0.7
+    zisnb = ZISNB(π, r, p)
+    mzisnb = MixtureZISNB(zisnb, negative_min, negative_max, mixture_prob)
+
+    Random.seed!(1234)
+    rand_val = rand(mzisnb)
+    @test rand_val >= negative_min && rand_val <= negative_max || rand_val >= 0
+
+    logpdf_val_nonneg = logpdf(mzisnb, 2)
+    logpdf_val_neg = logpdf(mzisnb, -3)
+    @test isapprox(logpdf_val_nonneg, log(mixture_prob) + logpdf(zisnb, 2))
+    @test isapprox(logpdf_val_neg, log1p(-mixture_prob) + logpdf(DiscreteUniform(negative_min, negative_max), -3))
+end
+
+# Test for JointTrimming
+@testset "JointTrimming Tests" begin
+    π_left = 0.3
+    p_left = 0.5
+    π_right = 0.4
+    p_right = 0.6
+    α = 0.1
+    β = 0.2
+    len = 10.0
+    jt = JointTrimming(π_left, p_left, π_right, p_right, α, β, len)
+
+    Random.seed!(1234)
+    rand_val = rand(jt)
+    @test length(rand_val) == 2
+
+    mu = exp(α + β * len) + eps
+    left_trimming = rand_val[1]
+    right_trimming = rand_val[2]
+
+    logpdf_val = logpdf(jt, rand_val)
+    @test isapprox(logpdf_val, logpdf(ZISNB(π_left, mu, p_left), left_trimming) + logpdf(ZISNB(π_right, mu, p_right), right_trimming))
+
+    loglikelihood_val = loglikelihood(jt, rand_val)
+    @test isapprox(loglikelihood_val, logpdf_val)
 end

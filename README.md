@@ -16,7 +16,7 @@ VDJDL is a Julia package specifically designed for deep learning tasks involving
 
 ### Layers
 - **Position Encoding**: Implements absolute positional sine-cosine embeddings, providing positional information to sequences ([Attetnion Is All You Need](https://doi.org/10.48550/arXiv.1706.03762))
-- **Rotary MultiHeadAttention**: Implements RoPE positional MultiHeadAttention layer as a wrapper of NeuralAttentionlib function ([RoFormer: Enhanced Transformer with Rotary Position Embedding](https://doi.org/10.48550/arXiv.2104.09864))
+- **Rotary MultiHeadAttention**: Implements RoPE positional MultiHeadAttention layer as a wrapper of [NeuralAttentionlib.jl](https://github.com/chengchingwen/NeuralAttentionlib.jl) function ([RoFormer: Enhanced Transformer with Rotary Position Embedding](https://doi.org/10.48550/arXiv.2104.09864))
 - **Rezero**: A normalization layer featuring a single learnable scaling parameter ([ReZero is All You Need: Fast Convergence at Large Depth](https://doi.org/10.48550/arXiv.2003.04887))
 
 
