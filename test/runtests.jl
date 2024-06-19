@@ -2,7 +2,7 @@ using Test
 using VDJDL.Tokenizer: LabelEncoder, SequenceTokenizer, read_fasta
 using VDJDL.Embeddings: PositionEncoding, make_position_encoding
 using VDJDL.Layers: Rezero, RotaryMultiHeadAttention
-using VDJDL.VDJDistributions: ShiftedPoisson, ZISNB, MixtureZISNB, JointTrimming, loglikelihood, eps
+using VDJDL.VDJDistributions: ShiftedPoisson, ZISNB, MixtureZISNB, BiZISNB, loglikelihood, eps
 using Flux
 using FiniteDifferences
 using Distributions
@@ -287,8 +287,10 @@ end
 
     logpdf_val_zero = logpdf(zisnb, 0)
     logpdf_val_nonzero = logpdf(zisnb, 2)
+    logpdf_val_negative = logpdf(zisnb, -1)
     @test isapprox(logpdf_val_zero, log(π))
     @test isapprox(logpdf_val_nonzero, log1p(-π) + logpdf(NegativeBinomial(r, p), 2 - 1))
+    @test logpdf_val_negative == -Inf
 end
 
 # Test for MixtureZISNB
@@ -301,19 +303,45 @@ end
     mixture_prob = 0.7
     zisnb = ZISNB(π, r, p)
     mzisnb = MixtureZISNB(zisnb, negative_min, negative_max, mixture_prob)
-
+    
     Random.seed!(1234)
     rand_val = rand(mzisnb)
     @test rand_val >= negative_min && rand_val <= negative_max || rand_val >= 0
+    
+    # Test rand function for MixtureZISNB to cover DiscreteUniform component
+    Random.seed!(1234)
+    rand_vals = [rand(mzisnb) for _ in 1:100]
+    count_negative = count(x -> x >= negative_min && x <= negative_max, rand_vals)
+    count_nonnegative = count(x -> x >= 0, rand_vals)
+    @test count_negative > 0
+    @test count_nonnegative > 0
+    
+    # Valid positive value for logpdf
+    @test isapprox(logpdf(mzisnb, 2), log(mixture_prob) + logpdf(zisnb, 2))
 
-    logpdf_val_nonneg = logpdf(mzisnb, 2)
-    logpdf_val_neg = logpdf(mzisnb, -3)
-    @test isapprox(logpdf_val_nonneg, log(mixture_prob) + logpdf(zisnb, 2))
-    @test isapprox(logpdf_val_neg, log1p(-mixture_prob) + logpdf(DiscreteUniform(negative_min, negative_max), -3))
+    # Valid negative value for logpdf
+    @test isapprox(logpdf(mzisnb, -3), log1p(-mixture_prob) + logpdf(DiscreteUniform(negative_min, negative_max), -3))
+
+    # Invalid negative value outside range for logpdf
+    @test logpdf(mzisnb, -6) == -Inf
+
+    # Test multiple rand values
+    Random.seed!(1234)
+    n = 10
+    rand_vals = rand(Random.GLOBAL_RNG, mzisnb, n)
+
+    @test length(rand_vals) == n
+    @test all(((rand_vals .>= negative_min) .& (rand_vals .<= negative_max)) .| (rand_vals .>= 0))
+
+    # Check that we have a mix of negative and non-negative values
+    count_negative = count(x -> x >= negative_min && x <= negative_max, rand_vals)
+    count_nonnegative = count(x -> x >= 0, rand_vals)
+    @test count_negative > 0
+    @test count_nonnegative > 0
 end
 
-# Test for JointTrimming
-@testset "JointTrimming Tests" begin
+# Test for BiZISNB
+@testset "BiZISNB Tests" begin
     π_left = 0.3
     p_left = 0.5
     π_right = 0.4
@@ -321,11 +349,14 @@ end
     α = 0.1
     β = 0.2
     len = 10.0
-    jt = JointTrimming(π_left, p_left, π_right, p_right, α, β, len)
+    jt = BiZISNB(π_left, p_left, π_right, p_right, α, β, len)
 
     Random.seed!(1234)
     rand_val = rand(jt)
+    n = 10
+    rand_vals = rand(jt, n)
     @test length(rand_val) == 2
+    @test length(rand_vals) == n
 
     mu = exp(α + β * len) + eps
     left_trimming = rand_val[1]
@@ -336,4 +367,5 @@ end
 
     loglikelihood_val = loglikelihood(jt, rand_val)
     @test isapprox(loglikelihood_val, logpdf_val)
+
 end

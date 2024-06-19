@@ -19,6 +19,10 @@ VDJDL is a Julia package specifically designed for deep learning tasks involving
 - **Rotary MultiHeadAttention**: Implements RoPE positional MultiHeadAttention layer as a wrapper of [NeuralAttentionlib.jl](https://github.com/chengchingwen/NeuralAttentionlib.jl) function ([RoFormer: Enhanced Transformer with Rotary Position Embedding](https://doi.org/10.48550/arXiv.2104.09864))
 - **Rezero**: A normalization layer featuring a single learnable scaling parameter ([ReZero is All You Need: Fast Convergence at Large Depth](https://doi.org/10.48550/arXiv.2003.04887))
 
+### Distributions
+- ZISNB (Zero Inflated Shifted Negative Binomial, DiscreteUniform) to handle zeros separetly from NB
+- MixtureZISNB (ZISNB, DiscreteUniform) to handle V and J trimmings with negative counts
+- BiZISNB (ZISNB, ZISNB, length) to handle conditionally on length, non-negative trimmings of D on both 5' and 3' ends
 
 ## Installation
 

@@ -3,7 +3,7 @@ module VDJDistributions
     using Random
     const eps = 1e-6
 
-    export ShiftedPoisson, ZISNB, MixtureZISNB, JointTrimming, eps
+    export ShiftedPoisson, ZISNB, MixtureZISNB, BiZISNB, eps
 
     """
         ShiftedPoisson{T}(λ, shift)
@@ -125,9 +125,9 @@ module VDJDistributions
     end
 
     """
-        JointTrimming{T1, T2, L}(π_left, p_left, π_right, p_right, α, β, len)
+        BiZISNB{T1, T2, L}(π_left, p_left, π_right, p_right, α, β, len)
 
-    Defines the JointTrimming distribution that combines two ZISNB distributions.
+    Defines the BiZISNB distribution that combines two ZISNB distributions.
     - `π_left`: Probability of zero inflation for the left trimming.
     - `p_left`: Probability of success for the left trimming.
     - `π_right`: Probability of zero inflation for the right trimming.
@@ -136,7 +136,7 @@ module VDJDistributions
     - `β`: Coefficient for the length-dependent part of the distribution.
     - `len`: Length parameter.
     """
-    struct JointTrimming{T1 <: Real, T2 <: Real, L <: Real} <: Distribution{Multivariate, Discrete}
+    struct BiZISNB{T1 <: Real, T2 <: Real, L <: Real} <: Distribution{Multivariate, Discrete}
         π_left::T1
         p_left::T1
         π_right::T2
@@ -147,11 +147,11 @@ module VDJDistributions
     end
 
     """
-        Distributions.rand(rng::AbstractRNG, d::JointTrimming)
+        Distributions.rand(rng::AbstractRNG, d::BiZISNB)
 
-    Generates a random sample from the JointTrimming distribution.
+    Generates a random sample from the BiZISNB distribution.
     """
-    function Distributions.rand(rng::AbstractRNG, d::JointTrimming)
+    function Distributions.rand(rng::AbstractRNG, d::BiZISNB)
         mu = exp(d.α + d.β * d.len) + eps
         left_trimming = rand(rng, ZISNB(d.π_left, mu, d.p_left))
         right_trimming = rand(rng, ZISNB(d.π_right, mu, d.p_right))
@@ -159,20 +159,20 @@ module VDJDistributions
     end
 
     """
-        Distributions.rand(rng::AbstractRNG, d::JointTrimming, n::Int)
+        Distributions.rand(rng::AbstractRNG, d::BiZISNB, n::Int)
 
-    Generates `n` random samples from the JointTrimming distribution.
+    Generates `n` random samples from the BiZISNB distribution.
     """
-    function Distributions.rand(rng::AbstractRNG, d::JointTrimming, n::Int)
+    function Distributions.rand(rng::AbstractRNG, d::BiZISNB, n::Int)
         return [rand(rng, d) for _ in 1:n]
     end
 
     """
-        Distributions.logpdf(d::JointTrimming, x::Tuple{Int, Int})
+        Distributions.logpdf(d::BiZISNB, x::Tuple{Int, Int})
 
-    Calculates the log of the probability density function for the JointTrimming distribution at a given tuple `x`.
+    Calculates the log of the probability density function for the BiZISNB distribution at a given tuple `x`.
     """
-    function Distributions.logpdf(d::JointTrimming, x::Tuple{Int, Int})
+    function Distributions.logpdf(d::BiZISNB, x::Tuple{Int, Int})
         left_trimming, right_trimming = x
         mu = exp(d.α + d.β * d.len) + eps
         logpdf_left = logpdf(ZISNB(d.π_left, mu, d.p_left), left_trimming)
@@ -181,11 +181,11 @@ module VDJDistributions
     end
 
     """
-        Distributions.loglikelihood(d::JointTrimming, x::Tuple{Int, Int})
+        Distributions.loglikelihood(d::BiZISNB, x::Tuple{Int, Int})
 
-    Calculates the log likelihood for the JointTrimming distribution at a given tuple `x`.
+    Calculates the log likelihood for the BiZISNB distribution at a given tuple `x`.
     """
-    function Distributions.loglikelihood(d::JointTrimming, x::Tuple{Int, Int})
+    function Distributions.loglikelihood(d::BiZISNB, x::Tuple{Int, Int})
         return logpdf(d, x)
     end
 end
