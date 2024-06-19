@@ -17,6 +17,7 @@ makedocs(;
         "Tokenizer" => "tokenizer.md",
         "Embeddings" => "embeddings.md",
         "Layers" => "layers.md",
+        "VDJDistributions" => "vdjdistributions.md",
     ],
     warnonly=true,
 )
