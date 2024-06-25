@@ -1,6 +1,8 @@
 module VDJDistributions
     using Turing
     using Random
+    using Distributions
+
     const eps = 1e-6
 
     export ShiftedPoisson, ZISNB, MixtureZISNB, BiZISNB, eps

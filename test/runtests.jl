@@ -63,7 +63,7 @@ end
     # Test AbstractMatrix{Int} method for LabelEncoder
     indices_matrix = [1 2; 3 1]
     decoded_matrix = encoder(indices_matrix)
-    @test decoded_matrix == [["A", "C"], ["B", "A"]]
+    @test decoded_matrix == ["A" "B"; "C" "A"]
 
     # Test Flux.trainable method
     @test length(Flux.trainable(encoder)) == 0
@@ -103,7 +103,7 @@ end
     # Test AbstractMatrix{Int} method for SequenceTokenizer
     indices_matrix = [1 2; 3 4]
     decoded_matrix = tokenizer(indices_matrix)
-    @test decoded_matrix == [['N', 'C'], ['A', 'G']]
+    @test decoded_matrix == ['N' 'A'; 'C' 'G']
 
     # Test case to trigger findfirst(isequal(unksym), alphabet)
     alphabet_with_unksym = ['N', 'A', 'C', 'G', 'T']

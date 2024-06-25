@@ -34,13 +34,12 @@ module Tokenizer
     # Returns
     - `LabelEncoder`: A `LabelEncoder` object.
     """
-    struct LabelEncoder
-        labels::Vector{String}
+    struct LabelEncoder{T <: AbstractVector{String}}
+        labels::T
         lookup::Dict{String, Int32}
-
-        function LabelEncoder(labels::Vector{String})
+        function LabelEncoder(labels::T) where T <: AbstractVector{String}
             lookup = Dict(label => Int32(idx) for (idx, label) in enumerate(labels))
-            new(labels, lookup)
+            new{T}(labels, lookup)
         end
     end
 
@@ -54,20 +53,12 @@ module Tokenizer
         haskey(encoder.lookup, label) ? encoder.lookup[label] : error("Label not found: $label")
     end
 
-    function (encoder::LabelEncoder)(idx::Int)
+    function (encoder::LabelEncoder)(idx::Integer)
         encoder.labels[idx]
     end
 
-    function (encoder::LabelEncoder)(batch::AbstractVector{String})
-        map(l -> encoder(l), batch)
-    end
-
-    function (encoder::LabelEncoder)(batch::AbstractVector{Int})
-        map(i -> encoder(i), batch)
-    end
-
-    function (encoder::LabelEncoder)(batch::AbstractMatrix{Int})
-        map(i -> encoder(i), eachcol(batch))
+    function (encoder::LabelEncoder)(x::A) where A <: AbstractArray
+        map(i -> encoder(i), x)
     end
 
     Flux.@layer LabelEncoder
@@ -85,28 +76,27 @@ module Tokenizer
     # Returns
     - `SequenceTokenizer{T}`: A `SequenceTokenizer` object.
     """ 
-    struct SequenceTokenizer{T}
-        alphabet::Vector{T}
+    struct SequenceTokenizer{T, V <: AbstractVector{T}}
+        alphabet::V
         lookup::Dict{T, Int32}
         unksym::T
         unkidx::Int32
 
-        function SequenceTokenizer(alphabet::Vector{T}, unksym::T) where T
+        function SequenceTokenizer(alphabet::V, unksym::T) where {T, V <: AbstractVector{T}}
             if !(unksym ∈ alphabet)
-                pushfirst!(alphabet, unksym)
+                alphabet = vcat(unksym, alphabet)
                 unkidx = Int32(1)
             else
                 unkidx = findfirst(isequal(unksym), alphabet)
             end
-            lookup = Dict(x => idx for (idx, x) in enumerate(alphabet))
-            new{T}(alphabet, lookup, unksym, unkidx)
+            lookup = Dict(x => Int32(idx) for (idx, x) in enumerate(alphabet))
+            new{T, V}(alphabet, lookup, unksym, unkidx)
         end
     end
 
     Base.length(tokenizer::SequenceTokenizer) = length(tokenizer.alphabet)
 
-    function Base.show(io::IO, tokenizer::SequenceTokenizer)
-        T = eltype(tokenizer.alphabet)
+    function Base.show(io::IO, tokenizer::SequenceTokenizer{T}) where T
         print(io, "SequenceTokenizer{$(T)}(length(alphabet)=$(length(tokenizer)), unksym=$(tokenizer.unksym))")
     end
 
@@ -114,19 +104,15 @@ module Tokenizer
         haskey(tokenizer.lookup, token) ? tokenizer.lookup[token] : tokenizer.unkidx
     end
 
-    function (tokenizer::SequenceTokenizer{T})(tokens::AbstractVector{T}) where T
-        map(t -> tokenizer(t), tokens)
-    end
-
-    function (tokenizer::SequenceTokenizer)(idx::Int)
+    function (tokenizer::SequenceTokenizer)(idx::Integer)
         tokenizer.alphabet[idx]
     end
 
-    function (tokenizer::SequenceTokenizer)(idxs::AbstractVector{Int})
-        map(i -> tokenizer(i), idxs)
+    function (tokenizer::SequenceTokenizer{T})(x::A) where {T, A <: AbstractArray}
+        map(i -> tokenizer(i), x)
     end
 
-    function (tokenizer::SequenceTokenizer)(batch::AbstractVector{Vector{T}}) where T
+    function (tokenizer::SequenceTokenizer{T})(batch::A) where {T, A <: AbstractVector{<:AbstractVector{T}}}
         lengths = map(length, batch)
         max_length = maximum(lengths)
         indices = fill(tokenizer.unkidx, max_length, length(batch))
@@ -136,15 +122,7 @@ module Tokenizer
                 @inbounds indices[i, j] = tokenizer(seq[i])
             end
         end
-        return indices
-    end
-
-    function (tokenizer::SequenceTokenizer)(batch::AbstractVector{Vector{Int}})
-        map(seq -> map(i -> tokenizer(i), seq), batch)
-    end
-
-    function (tokenizer::SequenceTokenizer)(batch::AbstractMatrix{Int})
-        map(seq -> map(i -> tokenizer(i), seq), eachcol(batch))
+        indices
     end
 
     Flux.@layer SequenceTokenizer
